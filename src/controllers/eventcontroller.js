@@ -1,10 +1,86 @@
-const pool = require('../db');
+const pool = require('../db.js');
 
-exports.createEvent = async (req, res) => {
+
+// GET /api/event → lista todos los eventos
+export const getEvents = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM events'; // Cambiá por la query real que uses
+    const result = await pool.query(query);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener eventos:', err);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
+// GET /api/event/:id → detalle de evento
+export const getEventById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = 'SELECT * FROM events WHERE id = $1';
+    const result = await pool.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al obtener evento por ID:', err);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
+// POST /api/event → crear evento
+export const createEvent = async (req, res) => {
   const {
     name,
     description,
-    id_event_location,
+    start_date,
+    duration_in_minutes,
+    price,
+    enabled_for_enrollment,
+    max_assistance,
+    id_event_location
+  } = req.body;
+
+  const userId = req.user?.id ?? 1; // Si no hay token, usamos 1 para pruebas
+
+  try {
+    const query = `
+      INSERT INTO events (
+        name, description, start_date, duration_in_minutes,
+        price, enabled_for_enrollment, max_assistance, id_event_location, id_creator_user
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *`;
+
+    const values = [
+      name,
+      description,
+      start_date,
+      duration_in_minutes,
+      price,
+      enabled_for_enrollment,
+      max_assistance,
+      id_event_location,
+      userId
+    ];
+
+    const result = await pool.query(query, values);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al crear evento:', err);
+    res.status(500).json({ message: 'Error interno al crear evento' });
+  }
+};
+
+// PUT /api/event/:id → actualizar evento
+export const updateEvent = async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    description,
     start_date,
     duration_in_minutes,
     price,
@@ -12,49 +88,57 @@ exports.createEvent = async (req, res) => {
     max_assistance
   } = req.body;
 
-  const id_creator_user = req.user.id;
-
-  // Validaciones básicas
-  if (!name || name.length < 3) return res.status(400).json({ message: 'Nombre inválido' });
-  if (!description || description.length < 3) return res.status(400).json({ message: 'Descripción inválida' });
-  if (duration_in_minutes < 0) return res.status(400).json({ message: 'Duración inválida' });
-  if (price < 0) return res.status(400).json({ message: 'Precio inválido' });
-
   try {
-    // Verificamos la capacidad máxima del lugar
-    const loc = await pool.query('SELECT max_capacity FROM event_locations WHERE id = $1', [id_event_location]);
-    if (loc.rowCount === 0) return res.status(404).json({ message: 'Ubicación inexistente' });
-
-    const max_capacity = parseInt(loc.rows[0].max_capacity);
-    if (max_assistance > max_capacity) {
-      return res.status(400).json({ message: 'La asistencia máxima supera la capacidad del lugar' });
-    }
-
-    // Insertamos el evento
-    const insertQuery = `
-      INSERT INTO events 
-      (name, description, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, id_creator_user)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *;
-    `;
+    const query = `
+      UPDATE events SET
+        name = $1,
+        description = $2,
+        start_date = $3,
+        duration_in_minutes = $4,
+        price = $5,
+        enabled_for_enrollment = $6,
+        max_assistance = $7
+      WHERE id = $8
+      RETURNING *`;
 
     const values = [
       name,
       description,
-      id_event_location,
       start_date,
       duration_in_minutes,
       price,
       enabled_for_enrollment,
       max_assistance,
-      id_creator_user
+      id
     ];
 
-    const result = await pool.query(insertQuery, values);
-    return res.status(201).json(result.rows[0]);
+    const result = await pool.query(query, values);
 
-  } catch (error) {
-    console.error('Error al crear el evento:', error);
-    return res.status(500).json({ message: 'Error del servidor' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al actualizar evento:', err);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
+// DELETE /api/event/:id → eliminar evento
+export const deleteEvent = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = 'DELETE FROM events WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    res.status(200).json({ message: 'Evento eliminado con éxito' });
+  } catch (err) {
+    console.error('Error al eliminar evento:', err);
+    res.status(500).json({ message: 'Error interno al eliminar evento' });
   }
 };

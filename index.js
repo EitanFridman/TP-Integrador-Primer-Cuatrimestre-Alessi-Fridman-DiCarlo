@@ -1,8 +1,20 @@
-require('dotenv').config();
-const app = require('./src/app');
+import express from "express";
+import cors from "cors";
+import EventRouter from './src/controllers/eventcontroller.js';
 
-const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+
+const app = express();
+const port = 3000;
+
+// Inclusión de los Middlewares
+app.use(cors());
+app.use(express.json());
+// app.use('/front', express.static('public'));
+app.use('/api/event', EventRouter);
+// app.use('/api/user', UserRouter);
+// app.use(unknownEndpoint);
+
+app.listen(port, () => {
+  console.log(`server Listening on port ${port}`);
 });

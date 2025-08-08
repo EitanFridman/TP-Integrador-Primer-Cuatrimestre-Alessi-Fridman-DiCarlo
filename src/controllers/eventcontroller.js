@@ -1,10 +1,9 @@
-const pool = require('../db.js');
+import pool from '../db.js';
 
 
-// GET /api/event → lista todos los eventos
 export const getEvents = async (req, res) => {
   try {
-    const query = 'SELECT * FROM events'; // Cambiá por la query real que uses
+    const query = 'SELECT * FROM events'; 
     const result = await pool.query(query);
     res.status(200).json(result.rows);
   } catch (err) {
@@ -13,7 +12,6 @@ export const getEvents = async (req, res) => {
   }
 };
 
-// GET /api/event/:id → detalle de evento
 export const getEventById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -31,7 +29,7 @@ export const getEventById = async (req, res) => {
   }
 };
 
-// POST /api/event → crear evento
+
 export const createEvent = async (req, res) => {
   const {
     name,
@@ -44,7 +42,7 @@ export const createEvent = async (req, res) => {
     id_event_location
   } = req.body;
 
-  const userId = req.user?.id ?? 1; // Si no hay token, usamos 1 para pruebas
+  const userId = req.user?.id ?? 1;
 
   try {
     const query = `
@@ -75,7 +73,7 @@ export const createEvent = async (req, res) => {
   }
 };
 
-// PUT /api/event/:id → actualizar evento
+
 export const updateEvent = async (req, res) => {
   const { id } = req.params;
   const {
@@ -125,7 +123,6 @@ export const updateEvent = async (req, res) => {
   }
 };
 
-// DELETE /api/event/:id → eliminar evento
 export const deleteEvent = async (req, res) => {
   const { id } = req.params;
   try {

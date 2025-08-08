@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import EventRouter from './src/controllers/eventcontroller.js';
+import EventRouter from './src/routes/eventroutes.js';
 
 
 

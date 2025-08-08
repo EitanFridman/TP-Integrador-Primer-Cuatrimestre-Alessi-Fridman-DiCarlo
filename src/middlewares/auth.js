@@ -1,18 +1,11 @@
-const jwt = require('jsonwebtoken');
-
-module.exports = (req, res, next) => {
+import jwt from 'jsonwebtoken';
+const auth = (req, res, next) => {
 
   const authHeader = req.headers['authorization'];
-
-
   if (!authHeader) {
     return res.status(401).json({ message: 'Token no proporcionado.' });
   }
-
-
   const token = authHeader.split(' ')[1];
-
-
   if (!token) {
     return res.status(401).json({ message: 'Token faltante.' });
   }
@@ -22,5 +15,6 @@ module.exports = (req, res, next) => {
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Token inválido.' });
-  }
+  } 
 };
+export default auth;

@@ -1,6 +1,6 @@
-const pool = require('../db');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+import pool from '../db.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
 

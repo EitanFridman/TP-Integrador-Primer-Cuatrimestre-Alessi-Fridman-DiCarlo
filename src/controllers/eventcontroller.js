@@ -144,18 +144,43 @@ export const createEvent = async (req, res) => {
 };
 
 export const updateEvent = async (req, res) => {
-  const { id } = req.params;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Usuario no autenticado.' });
+
   const {
-    name,
-    description,
-    start_date,
-    duration_in_minutes,
-    price,
-    enabled_for_enrollment,
-    max_assistance
+    id, name, description, start_date, duration_in_minutes, price,
+    enabled_for_enrollment, max_assistance, id_event_location
   } = req.body;
 
+  if (!id) return res.status(400).json({ message: 'Falta id del evento en el body.' });
+
   try {
+    const existing = await getEventByIdRaw(id);
+    if (!existing || existing.id_creator_user !== userId) {
+      return res.status(404).json({ message: 'Evento no encontrado o no pertenece al usuario.' });
+    }
+
+    const payload = {
+      name: name ?? existing.name,
+      description: description ?? existing.description,
+      start_date: start_date ?? existing.start_date,
+      duration_in_minutes: duration_in_minutes ?? existing.duration_in_minutes,
+      price: price ?? existing.price,
+      enabled_for_enrollment:
+        typeof enabled_for_enrollment === 'boolean' ? enabled_for_enrollment : existing.enabled_for_enrollment,
+      max_assistance: max_assistance ?? existing.max_assistance,
+      id_event_location: id_event_location ?? existing.id_event_location,
+    };
+
+    const errMsg = validateEventPayload(payload);
+    if (errMsg) return res.status(400).json({ message: errMsg });
+
+    const maxCapacity = await getLocationCapacity(payload.id_event_location);
+    if (maxCapacity == null) return res.status(400).json({ message: 'id_event_location inválido.' });
+    if (Number(payload.max_assistance) > Number(maxCapacity)) {
+      return res.status(400).json({ message: 'max_assistance no puede superar el max_capacity del lugar.' });
+    }
+
     const query = `
       UPDATE events SET
         name = $1,
@@ -164,47 +189,56 @@ export const updateEvent = async (req, res) => {
         duration_in_minutes = $4,
         price = $5,
         enabled_for_enrollment = $6,
-        max_assistance = $7
-      WHERE id = $8
+        max_assistance = $7,
+        id_event_location = $8
+      WHERE id = $9 AND id_creator_user = $10
       RETURNING *`;
-
     const values = [
-      name,
-      description,
-      start_date,
-      duration_in_minutes,
-      price,
-      enabled_for_enrollment,
-      max_assistance,
-      id
+      payload.name, payload.description, payload.start_date, payload.duration_in_minutes,
+      payload.price, payload.enabled_for_enrollment, payload.max_assistance,
+      payload.id_event_location, id, userId
     ];
 
     const result = await pool.query(query, values);
-
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
+      return res.status(404).json({ message: 'Evento no encontrado o no pertenece al usuario.' });
     }
 
-    res.status(200).json(result.rows[0]);
+    return res.status(200).json(result.rows[0]);
   } catch (err) {
     console.error('Error al actualizar evento:', err);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    return res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
 
 export const deleteEvent = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const query = 'DELETE FROM events WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Usuario no autenticado.' });
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ message: 'Falta id de evento en la ruta.' });
+
+  try {
+    const existing = await getEventByIdRaw(id);
+    if (!existing || existing.id_creator_user !== userId) {
+      return res.status(404).json({ message: 'Evento no encontrado o no pertenece al usuario.' });
     }
 
-    res.status(200).json({ message: 'Evento eliminado con éxito' });
+    if (await hasEnrollments(id)) {
+      return res.status(400).json({ message: 'No se puede eliminar: hay usuarios inscriptos al evento.' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM events WHERE id = $1 AND id_creator_user = $2 RETURNING *',
+      [id, userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Evento no encontrado o no pertenece al usuario.' });
+    }
+
+    return res.status(200).json(result.rows[0]);
   } catch (err) {
     console.error('Error al eliminar evento:', err);
-    res.status(500).json({ message: 'Error interno al eliminar evento' });
+    return res.status(500).json({ message: 'Error interno al eliminar evento' });
   }
 };

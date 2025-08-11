@@ -1,15 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
+import express from 'express';
+import cors from 'cors';
+import userRoutes from './routes/userroutes.js';
+import eventRoutes from './routes/eventroutes.js';
+import eventLocationRoutes from './routes/eventlocationroutes.js';
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/user', require('./routes/usersroutes'));
-app.use('/api/event', require('./routes/eventroutes'));
+app.use('/api/user', userRoutes);
+app.use('/api/event', eventRoutes);
+app.use('/api/event-location', eventLocationRoutes);
 
-app.get('/', (req, res) => {
-  res.send('API de Eventos funcionando');
-});
-
-module.exports = app;
+app.get('/', (_req, res) => res.send('API de Eventos funcionando'));
+export default app;

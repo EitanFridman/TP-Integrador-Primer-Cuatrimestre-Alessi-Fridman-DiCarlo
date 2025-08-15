@@ -56,3 +56,38 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
+// Nuevos endpoints para inscripciones
+export const enrollInEvent = async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Usuario no autenticado.' });
+  try {
+    const result = await eventService.enrollInEvent(userId, req.params.id);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('Error al inscribirse al evento:', err);
+    res.status(err.status || 500).json({ message: err.message || 'Error interno al inscribirse' });
+  }
+};
+
+export const unenrollFromEvent = async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: 'Usuario no autenticado.' });
+  try {
+    const result = await eventService.unenrollFromEvent(userId, req.params.id);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Error al cancelar inscripción:', err);
+    res.status(err.status || 500).json({ message: err.message || 'Error interno al cancelar inscripción' });
+  }
+};
+
+export const getEventParticipants = async (req, res) => {
+  try {
+    const participants = await eventService.getEventParticipants(req.params.id);
+    res.status(200).json({ collection: participants });
+  } catch (err) {
+    console.error('Error al obtener participantes:', err);
+    res.status(err.status || 500).json({ message: err.message || 'Error interno al obtener participantes' });
+  }
+};
+

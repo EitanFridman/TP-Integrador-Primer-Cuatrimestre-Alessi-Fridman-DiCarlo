@@ -45,7 +45,8 @@ export const register = async (data) => {
   return userRepo.insert({ first_name, last_name, username, password: hashed });
 };
 
-export const login = async ({ username, password }) => {
+export const login = async (data = {}) => {
+  let { username, password } = data;
   username = String(username ?? '').trim().toLowerCase();
   password = String(password ?? '');
 

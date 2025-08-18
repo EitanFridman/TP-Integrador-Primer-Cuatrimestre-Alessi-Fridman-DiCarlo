@@ -9,8 +9,8 @@ export const findWithFilters = async ({ name, startdate, tag } = {}) => {
 
   if (tag) {
     fromClause += `
-      JOIN event_tags et ON et.event_id = e.id
-      JOIN tags t ON t.id = et.tag_id
+      JOIN event_tags et ON et.id_event = e.id
+      JOIN tags t ON t.id = et.id_tag
     `;
     values.push(`%${tag}%`);
     where.push(`t.name ILIKE $${i++}`);
@@ -123,7 +123,7 @@ export const getLocationCapacity = async (id_event_location) => {
 
 export const hasEnrollments = async (eventId) => {
   const { rowCount } = await pool.query(
-    'SELECT 1 FROM event_enrollments WHERE event_id = $1 LIMIT 1',
+    'SELECT 1 FROM event_enrollments WHERE id_event = $1 LIMIT 1',
     [eventId]
   );
   return rowCount > 0;
